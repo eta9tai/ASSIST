@@ -6,9 +6,8 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, getDocs, query, where, collection } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
@@ -54,32 +53,13 @@ export default function SignupPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // Check if username is unique
-      const agentsRef = collection(db, "agents");
-      const q = query(agentsRef, where("username", "==", values.username));
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        toast({
-          variant: "destructive",
-          title: "Signup Failed",
-          description: "This username is already taken. Please choose another one.",
-        });
-        setIsLoading(false);
-        return;
-      }
-
       // Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // Create user document in Firestore
-      await setDoc(doc(db, "agents", user.uid), {
-        uid: user.uid,
-        username: values.username,
-        email: values.email,
-        agentId: user.uid, // Add agentId to comply with security rules
-      });
-
+      // Add username to user's profile
+      await updateProfile(user, { displayName: values.username });
+      
       router.push("/dashboard");
     } catch (error: any) {
       console.error("Signup error:", error);
