@@ -1,0 +1,65 @@
+/*
+------------------------------------------------------------------
+Firebase Setup Instructions for AgentAssist
+------------------------------------------------------------------
+
+1. Create a Firebase Project:
+   - Go to the Firebase Console (https://console.firebase.google.com/).
+   - Click "Add project" and follow the on-screen instructions to create a new project.
+
+2. Set up a Web App:
+   - In your new project's dashboard, click the Web icon (</>) to add a new web app.
+   - Give your app a nickname (e.g., "AgentAssist Web").
+   - Click "Register app".
+   - Firebase will provide you with a `firebaseConfig` object. Copy these credentials.
+
+3. Add Credentials to your Next.js App:
+   - In your code editor, open the file `src/lib/firebase.ts`.
+   - Paste the `firebaseConfig` object you copied, replacing the placeholder values.
+
+4. Enable Firebase Authentication:
+   - In the Firebase Console, go to the "Authentication" section (under "Build").
+   - Click "Get started".
+   - Under the "Sign-in method" tab, enable the "Email/Password" provider.
+
+5. Create a Firestore Database:
+   - In the Firebase Console, go to the "Firestore Database" section (under "Build").
+   - Click "Create database".
+   - Choose to start in "production mode". This is important for security.
+   - Select a location for your database (choose the one closest to your users).
+   - Click "Enable".
+
+6. Apply Firestore Security Rules:
+   - In the Firestore Database section, go to the "Rules" tab.
+   - Copy the entire content of THIS file (`firestore.rules`) below this comment block.
+   - Paste it into the rules editor in the Firebase Console, replacing the default rules.
+   - Click "Publish".
+
+Your Firebase backend is now set up and secured for the AgentAssist application!
+You will have two collections created automatically when users sign up and log calls:
+- `agents`: Stores information about each registered call center agent.
+- `clients`: Stores the call entries logged by the agents.
+*/
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Agents Collection
+    // - Anyone can create an agent profile (on signup).
+    // - Only the authenticated agent can read or update their own profile.
+    match /agents/{agentId} {
+      allow create: if request.auth != null;
+      allow read, update: if request.auth.uid == agentId;
+      allow delete: if false; // Agents should not be able to delete their profiles.
+    }
+
+    // Clients Collection (Call Entries)
+    // - Only authenticated agents can create new call entries.
+    // - An agent can only read, update, or delete their own call entries.
+    match /clients/{clientId} {
+      allow create: if request.auth != null && request.resource.data.agentId == request.auth.uid;
+      allow read, update, delete: if resource.data.agentId == request.auth.uid;
+    }
+  }
+}
