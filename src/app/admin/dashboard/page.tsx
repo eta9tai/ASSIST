@@ -86,7 +86,7 @@ function AgentPaymentHistory({ agentId, companyFunds }: { agentId: "ZN001" | "ZN
       batch.update(paymentDocRef, { status: "Credited" });
       
       // 2. Decrement the company funds
-      batch.update(fundsDocRef, { balance: increment(-payment.amount) });
+      batch.update(fundsDocRef, { balance: increment(-(payment.amount || 0)) });
       
       await batch.commit();
 
@@ -138,12 +138,13 @@ function AgentPaymentHistory({ agentId, companyFunds }: { agentId: "ZN001" | "ZN
             </TableRow>
           ) : payments.length > 0 ? (
             payments.map(payment => {
-                const isCreditable = companyFunds !== null && (companyFunds - payment.amount) >= MAX_NEGATIVE_FUNDS;
+                const paymentAmount = payment.amount || 0;
+                const isCreditable = companyFunds !== null && (companyFunds - paymentAmount) >= MAX_NEGATIVE_FUNDS;
                 return (
                   <TableRow key={payment.id}>
                     <TableCell>{payment.date?.toDate().toLocaleDateString() || 'N/A'}</TableCell>
                     <TableCell className="font-medium">{payment.purpose}</TableCell>
-                    <TableCell className="font-mono">₹{payment.amount.toLocaleString()}</TableCell>
+                    <TableCell className="font-mono">₹{paymentAmount.toLocaleString()}</TableCell>
                     <TableCell>
                       <Badge variant={getStatusVariant(payment.status)}>
                         {payment.status || 'Issued'}
