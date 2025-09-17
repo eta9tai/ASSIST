@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, getDocs, doc, updateDoc, where, setDoc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import type { SalaryPayment } from "@/lib/types";
@@ -19,9 +19,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, PlusCircle, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, PlusCircle, CheckCircle, XCircle, RefreshCw } from "lucide-react";
 
 const salaryFormSchema = z.object({
   agentId: z.enum(["ZN001", "ZN002"], { required_error: "You must select an agent." }),
@@ -179,7 +180,6 @@ export default function AdminDashboardPage() {
   const [isSalaryDialogOpen, setIsSalaryDialogOpen] = useState(false);
 
   useEffect(() => {
-    // This effect should only run on the client
     if (sessionStorage.getItem('isAdminAuthenticated') !== 'true') {
       router.replace('/login');
     } else {
@@ -204,12 +204,30 @@ export default function AdminDashboardPage() {
       let paymentPurpose = values.purpose;
 
       if (values.settleAccount) {
-        const callsQuery = query(collection(db, values.agentId));
+        
+        // Fetch the last reset timestamp
+        const metaDocRef = doc(db, "agentMetadata", values.agentId);
+        const metaDoc = await getDoc(metaDocRef);
+        const lastResetAt = metaDoc.exists() ? metaDoc.data().lastResetAt : null;
+
+        // Query calls after the reset date
+        let callsQuery = query(collection(db, values.agentId));
+        if (lastResetAt) {
+          callsQuery = query(callsQuery, where("createdAt", ">", lastResetAt));
+        }
         const callsSnapshot = await getDocs(callsQuery);
         const totalEarnings = callsSnapshot.size * CALL_RATE;
         
-        const salaryQuery = query(collection(db, "salary", values.agentId, "payments"));
-        const salarySnapshot = await getDocs(salaryQuery);
+        const salaryQuery = query(
+          collection(db, "salary", values.agentId, "payments"),
+          where("status", "in", ["Credited", "Issued"]),
+        );
+        let effectiveSalaryQuery = salaryQuery;
+        if (lastResetAt) {
+             effectiveSalaryQuery = query(salaryQuery, where("date", ">", lastResetAt));
+        }
+
+        const salarySnapshot = await getDocs(effectiveSalaryQuery);
         let totalPaid = 0;
         salarySnapshot.forEach(doc => { totalPaid += doc.data().amount || 0; });
         
@@ -252,6 +270,27 @@ export default function AdminDashboardPage() {
       });
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  const handleResetEarnings = async (agentId: "ZN001" | "ZN002") => {
+    setIsLoading(true);
+    try {
+      const metaDocRef = doc(db, "agentMetadata", agentId);
+      await setDoc(metaDocRef, { lastResetAt: serverTimestamp() }, { merge: true });
+       toast({
+        title: "Earnings Reset!",
+        description: `Agent ${agentId}'s earnings display has been reset to zero.`,
+      });
+    } catch (error) {
+       console.error("Error resetting earnings: ", error);
+       toast({
+        variant: "destructive",
+        title: "Reset Error",
+        description: "Could not reset earnings. Please try again.",
+      });
+    } finally {
+        setIsLoading(false);
     }
   }
   
@@ -350,7 +389,7 @@ export default function AdminDashboardPage() {
         <CardHeader>
             <CardTitle>Agent Payment Logs</CardTitle>
              <CardDescription>
-                A detailed history of all payments made to each agent. Mark payments as "Credited" once paid.
+                A detailed history of all payments made to each agent. Mark payments as "Credited" or "Cancelled".
             </CardDescription>
         </CardHeader>
         <CardContent>
@@ -360,9 +399,51 @@ export default function AdminDashboardPage() {
               <TabsTrigger value="zn002">Agent ZN002</TabsTrigger>
             </TabsList>
             <TabsContent value="zn001" className="mt-4">
+                <div className="flex justify-end mb-4">
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="outline" disabled={isLoading}>
+                                <RefreshCw className="mr-2 h-4 w-4" /> Reset Earnings
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This will reset the displayed earnings for Agent ZN001 to zero. All previous call logs will be kept, but the earnings calculation will start over from now. This action cannot be undone.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleResetEarnings("ZN001")}>Confirm Reset</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
               <AgentPaymentHistory agentId="ZN001" />
             </TabsContent>
             <TabsContent value="zn002" className="mt-4">
+              <div className="flex justify-end mb-4">
+                   <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="outline" disabled={isLoading}>
+                                <RefreshCw className="mr-2 h-4 w-4" /> Reset Earnings
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This will reset the displayed earnings for Agent ZN002 to zero. All previous call logs will be kept, but the earnings calculation will start over from now. This action cannot be undone.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleResetEarnings("ZN002")}>Confirm Reset</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
               <AgentPaymentHistory agentId="ZN002" />
             </TabsContent>
           </Tabs>
@@ -371,3 +452,5 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
+    

@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { collection, onSnapshot, query } from "firebase/firestore";
+import { collection, onSnapshot, query, doc, getDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,35 +28,65 @@ export default function EarningsDisplay() {
 
     setIsLoading(true);
 
-    // Listener for call entries to calculate earnings
-    const callsQuery = collection(db, agentId);
-    const unsubscribeCalls = onSnapshot(callsQuery, (snapshot) => {
-      const earnings = snapshot.size * CALL_RATE;
-      setTotalEarnings(earnings);
-    }, (error) => {
-      console.error("Error fetching calls for earnings:", error);
-    });
+    const setupListeners = async () => {
+      // Fetch the last reset timestamp for the agent
+      const metaDocRef = doc(db, "agentMetadata", agentId);
+      const metaDoc = await getDoc(metaDocRef);
+      const lastResetAt = metaDoc.exists() ? metaDoc.data().lastResetAt : null;
 
-    // Listener for salary payments
-    const salaryQuery = query(collection(db, "salary", agentId, "payments"));
-    const unsubscribeSalary = onSnapshot(salaryQuery, (snapshot) => {
-      let totalPaid = 0;
-      snapshot.forEach((doc) => {
-        const payment = doc.data() as SalaryPayment;
-        totalPaid += payment.amount || 0;
-      });
-      setSalaryPaid(totalPaid);
-      setIsLoading(false); 
-    }, (error) => {
-        console.error("Error fetching salary:", error);
-        setSalaryPaid(0); 
+      // Listener for call entries to calculate earnings
+      let callsQuery = query(collection(db, agentId));
+      if (lastResetAt) {
+        // If a reset date exists, only get calls created after that date
+        callsQuery = query(callsQuery, where("createdAt", ">", lastResetAt));
+      }
+      
+      const unsubscribeCalls = onSnapshot(callsQuery, (snapshot) => {
+        const earnings = snapshot.size * CALL_RATE;
+        setTotalEarnings(earnings);
+        setIsLoading(false); // Set loading to false after first calculation
+      }, (error) => {
+        console.error("Error fetching calls for earnings:", error);
         setIsLoading(false);
-    });
+      });
 
-    return () => {
-      unsubscribeCalls();
-      unsubscribeSalary();
+      // Listener for salary payments
+      let salaryQuery = query(
+        collection(db, "salary", agentId, "payments"),
+        where("status", "in", ["Credited", "Issued"])
+      );
+      if (lastResetAt) {
+        // If a reset date exists, only get payments made after that date
+        salaryQuery = query(salaryQuery, where("date", ">", lastResetAt));
+      }
+      
+      const unsubscribeSalary = onSnapshot(salaryQuery, (snapshot) => {
+        let totalPaid = 0;
+        snapshot.forEach((doc) => {
+          const payment = doc.data() as SalaryPayment;
+          // We only count credited payments towards the total paid amount
+          if (payment.status === 'Credited') {
+             totalPaid += payment.amount || 0;
+          }
+        });
+        setSalaryPaid(totalPaid);
+      }, (error) => {
+          console.error("Error fetching salary:", error);
+          setSalaryPaid(0);
+      });
+
+      return () => {
+        unsubscribeCalls();
+        unsubscribeSalary();
+      };
     };
+
+    const unsubscribePromise = setupListeners();
+    
+    return () => {
+      unsubscribePromise.then(cleanup => cleanup && cleanup());
+    };
+
   }, [agentId]);
 
   return (
@@ -77,7 +107,7 @@ export default function EarningsDisplay() {
             </div>
             <div className="flex-1 space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">
-                Total Earnings
+                Total Earnings (Since Last Reset)
                 </p>
                 {isLoading ? (
                     <Skeleton className="h-6 w-24" />
@@ -92,7 +122,7 @@ export default function EarningsDisplay() {
             </div>
             <div className="flex-1 space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">
-                Total Salary Paid
+                Total Salary Credited (Since Last Reset)
                 </p>
                  {isLoading ? (
                     <Skeleton className="h-6 w-24" />
@@ -105,3 +135,5 @@ export default function EarningsDisplay() {
     </Card>
   );
 }
+
+    
