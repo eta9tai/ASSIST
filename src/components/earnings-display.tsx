@@ -1,14 +1,16 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, onSnapshot, doc } from "firebase/firestore";
+import Link from "next/link";
+import { collection, onSnapshot, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
-import type { CallEntry, SalaryData } from "@/lib/types";
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DollarSign, Wallet } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { DollarSign, Wallet, History } from "lucide-react";
+import type { SalaryPayment } from "@/lib/types";
 
 const CALL_RATE = 15; // 15 rupees per call
 
@@ -31,17 +33,20 @@ export default function EarningsDisplay() {
     const unsubscribeCalls = onSnapshot(callsQuery, (snapshot) => {
       const earnings = snapshot.size * CALL_RATE;
       setTotalEarnings(earnings);
+    }, (error) => {
+      console.error("Error fetching calls for earnings:", error);
+      // Even if calls fail, we might still get salary
     });
 
-    // Listener for salary data
-    const salaryDocRef = doc(db, "salary", agentId);
-    const unsubscribeSalary = onSnapshot(salaryDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data() as SalaryData;
-        setSalaryPaid(data.totalPaid || 0);
-      } else {
-        setSalaryPaid(0);
-      }
+    // Listener for salary payments
+    const salaryQuery = query(collection(db, "salary", agentId, "payments"));
+    const unsubscribeSalary = onSnapshot(salaryQuery, (snapshot) => {
+      let totalPaid = 0;
+      snapshot.forEach((doc) => {
+        const payment = doc.data() as SalaryPayment;
+        totalPaid += payment.amount || 0;
+      });
+      setSalaryPaid(totalPaid);
       setIsLoading(false); // Stop loading after salary is fetched
     }, (error) => {
         console.error("Error fetching salary:", error);
@@ -58,8 +63,14 @@ export default function EarningsDisplay() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Earnings & Salary</CardTitle>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/dashboard/salary-log">
+            <History className="mr-2 h-4 w-4" />
+            View Salary Log
+          </Link>
+        </Button>
       </CardHeader>
       <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="flex items-center space-x-4 rounded-md border p-4">

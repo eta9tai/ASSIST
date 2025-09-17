@@ -1,3 +1,4 @@
+
 import type { Timestamp } from "firebase/firestore";
 
 export type CallEntry = {
@@ -10,7 +11,9 @@ export type CallEntry = {
   createdAt: Timestamp;
 };
 
-export type SalaryData = {
-  agentId: string;
-  totalPaid: number;
+export type SalaryPayment = {
+  id: string;
+  amount: number;
+  purpose: string;
+  date: Timestamp;
 };
