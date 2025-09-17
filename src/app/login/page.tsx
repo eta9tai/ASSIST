@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -68,7 +69,7 @@ export default function LoginPage() {
         await signInAnonymously(auth);
         // We use sessionStorage to grant access for this session only.
         sessionStorage.setItem('isAdminAuthenticated', 'true');
-        router.push("/admin/salary");
+        router.push("/admin/dashboard");
       } catch (error) {
          toast({
           variant: "destructive",
