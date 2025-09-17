@@ -16,4 +16,7 @@ export type SalaryPayment = {
   amount: number;
   purpose: string;
   date: Timestamp;
+  status?: "Issued" | "Credited";
 };
+
+    

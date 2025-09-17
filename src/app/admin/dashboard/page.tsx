@@ -6,10 +6,10 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, getDocs } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, getDocs, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
-import type { SalaryPayment, CallEntry } from "@/lib/types";
+import type { SalaryPayment } from "@/lib/types";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +20,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, PlusCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, PlusCircle, CheckCircle } from "lucide-react";
 
 const salaryFormSchema = z.object({
   agentId: z.enum(["ZN001", "ZN002"], { required_error: "You must select an agent." }),
@@ -37,6 +38,8 @@ const CALL_RATE = 15;
 function AgentPaymentHistory({ agentId }: { agentId: "ZN001" | "ZN002" }) {
   const [payments, setPayments] = useState<SalaryPayment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const paymentsQuery = query(
@@ -57,19 +60,56 @@ function AgentPaymentHistory({ agentId }: { agentId: "ZN001" | "ZN002" }) {
     return () => unsubscribe();
   }, [agentId]);
 
+  const handleMarkAsCredited = async (paymentId: string) => {
+    setIsUpdating(paymentId);
+    try {
+      const paymentDocRef = doc(db, "salary", agentId, "payments", paymentId);
+      await updateDoc(paymentDocRef, {
+        status: "Credited"
+      });
+      toast({
+        title: "Success",
+        description: "Payment status updated to Credited.",
+      });
+    } catch (error) {
+      console.error("Error updating payment status:", error);
+      toast({
+        variant: "destructive",
+        title: "Update Error",
+        description: "Could not update the payment status. Please try again.",
+      });
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
+  const getStatusVariant = (status: string | undefined) => {
+    switch (status) {
+      case 'Credited':
+        return 'default';
+      case 'Issued':
+        return 'secondary';
+      default:
+        return 'outline';
+    }
+  };
+
+
   return (
      <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Date</TableHead>
             <TableHead>Purpose</TableHead>
-            <TableHead className="text-right">Amount</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {isLoading ? (
             <TableRow>
-              <TableCell colSpan={3} className="h-24 text-center">
+              <TableCell colSpan={5} className="h-24 text-center">
                 <Loader2 className="mx-auto h-6 w-6 animate-spin" />
               </TableCell>
             </TableRow>
@@ -78,12 +118,34 @@ function AgentPaymentHistory({ agentId }: { agentId: "ZN001" | "ZN002" }) {
               <TableRow key={payment.id}>
                 <TableCell>{payment.date?.toDate().toLocaleDateString() || 'N/A'}</TableCell>
                 <TableCell className="font-medium">{payment.purpose}</TableCell>
-                <TableCell className="text-right font-mono">₹{payment.amount.toLocaleString()}</TableCell>
+                <TableCell className="font-mono">₹{payment.amount.toLocaleString()}</TableCell>
+                <TableCell>
+                  <Badge variant={getStatusVariant(payment.status)}>
+                    {payment.status || 'Issued'}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  {payment.status !== 'Credited' && (
+                     <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleMarkAsCredited(payment.id)}
+                      disabled={isUpdating === payment.id}
+                    >
+                      {isUpdating === payment.id ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                      )}
+                      Mark as Credited
+                    </Button>
+                  )}
+                </TableCell>
               </TableRow>
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={3} className="h-24 text-center">
+              <TableCell colSpan={5} className="h-24 text-center">
                 No payments found for this agent.
               </TableCell>
             </TableRow>
@@ -157,11 +219,12 @@ export default function AdminDashboardPage() {
         amount: paymentAmount,
         purpose: paymentPurpose,
         date: serverTimestamp(),
+        status: "Issued", // Set initial status to Issued
       });
 
       toast({
         title: "Success!",
-        description: `₹${paymentAmount.toLocaleString()} has been credited to Agent ${values.agentId}.`,
+        description: `₹${paymentAmount.toLocaleString()} has been issued to Agent ${values.agentId}.`,
       });
       form.reset();
       setIsDialogOpen(false);
@@ -260,7 +323,7 @@ export default function AdminDashboardPage() {
                 )}
               />
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Credit Salary to Agent"}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Issue Salary to Agent"}
               </Button>
             </form>
           </Form>
@@ -293,3 +356,5 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
+    

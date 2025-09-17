@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
 
 export default function SalaryLogPage() {
@@ -19,11 +20,15 @@ export default function SalaryLogPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (authLoading || !agentId) {
-      setIsLoading(true);
+    if (authLoading) {
+      return; 
+    }
+    if (!agentId) {
+      setIsLoading(false);
       return;
     }
 
+    setIsLoading(true);
     const paymentsQuery = query(
       collection(db, "salary", agentId, "payments"),
       orderBy("date", "desc")
@@ -47,6 +52,17 @@ export default function SalaryLogPage() {
 
     return () => unsubscribe();
   }, [agentId, authLoading]);
+
+  const getStatusVariant = (status: string | undefined) => {
+    switch (status) {
+      case 'Credited':
+        return 'default';
+      case 'Issued':
+        return 'secondary';
+      default:
+        return 'outline';
+    }
+  };
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
@@ -76,7 +92,8 @@ export default function SalaryLogPage() {
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Purpose</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead className="text-right">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -85,7 +102,8 @@ export default function SalaryLogPage() {
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-6 w-24 ml-auto" /></TableCell>
                   </TableRow>
                 ))
               ) : payments.length > 0 ? (
@@ -95,14 +113,19 @@ export default function SalaryLogPage() {
                       {payment.date?.toDate().toLocaleDateString() || 'N/A'}
                     </TableCell>
                     <TableCell className="font-medium">{payment.purpose}</TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="font-mono">
                       ₹{payment.amount.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Badge variant={getStatusVariant(payment.status)}>
+                        {payment.status || 'Issued'}
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center">
+                  <TableCell colSpan={4} className="h-24 text-center">
                     No salary payments found for this agent.
                   </TableCell>
                 </TableRow>
@@ -114,3 +137,5 @@ export default function SalaryLogPage() {
     </div>
   );
 }
+
+    
