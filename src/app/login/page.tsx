@@ -35,6 +35,7 @@ const AGENT_SECRET_CODES: Record<string, string> = {
   ZN001: "0",
   ZN002: "2025",
 };
+const PRE_LOGIN_KEY = "preLoginAuthenticated";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -52,17 +53,27 @@ export default function LoginPage() {
   const [selectedAgent, setSelectedAgent] = useState<'ZN001' | 'ZN002' | null>(null);
   const [agentSecretCode, setAgentSecretCode] = useState("");
   const [agentSecretCodeError, setAgentSecretCodeError] = useState("");
+
+  const [isCheckingPreLogin, setIsCheckingPreLogin] = useState(true);
+
+  useEffect(() => {
+      if (sessionStorage.getItem(PRE_LOGIN_KEY) !== 'true') {
+          router.replace('/');
+      } else {
+          setIsCheckingPreLogin(false);
+      }
+  }, [router]);
   
   useEffect(() => {
-    // If done loading, check for authentication status and redirect if necessary.
-    if (!loading) {
+    // If done loading and pre-login is passed, check for authentication status and redirect if necessary.
+    if (!loading && !isCheckingPreLogin) {
       if (user && agentId) {
         router.replace("/dashboard");
       } else if (user && sessionStorage.getItem('isAdminAuthenticated') === 'true') {
         router.replace('/admin/dashboard');
       }
     }
-  }, [user, agentId, loading, router]);
+  }, [user, agentId, loading, router, isCheckingPreLogin]);
 
   const openAgentLoginDialog = (agent: 'ZN001' | 'ZN002') => {
     setSelectedAgent(agent);
@@ -120,7 +131,7 @@ export default function LoginPage() {
     }
   };
 
-  if (loading) {
+  if (loading || isCheckingPreLogin) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

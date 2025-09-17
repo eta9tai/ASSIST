@@ -29,7 +29,8 @@ export default function Header() {
       setAgentId(null);
     }
     sessionStorage.removeItem('isAdminAuthenticated');
-    router.push("/login");
+    sessionStorage.removeItem('preLoginAuthenticated');
+    router.push("/");
   };
 
   const getInitials = (id: string | null | undefined) => {
