@@ -42,12 +42,11 @@ export default function LoginPage() {
   const [secretCodeError, setSecretCodeError] = useState("");
   
   useEffect(() => {
-    // If done loading and user is logged in with an agentId, redirect to dashboard
+    // If done loading, check for authentication status and redirect if necessary.
     if (!loading) {
       if (user && agentId) {
         router.replace("/dashboard");
-      }
-      if (user && sessionStorage.getItem('isAdminAuthenticated') === 'true') {
+      } else if (user && sessionStorage.getItem('isAdminAuthenticated') === 'true') {
         router.replace('/admin/dashboard');
       }
     }
@@ -57,11 +56,11 @@ export default function LoginPage() {
   const handleAgentLogin = async (agent: 'ZN001' | 'ZN002') => {
     setIsLoading(agent);
     try {
-      await signInAnonymously(auth);
+      const userCredential = await signInAnonymously(auth);
       if (setAgentId) {
         setAgentId(agent);
       }
-      router.push("/dashboard");
+      // No need to push, the useEffect will handle the redirect.
     } catch (error: any) {
       console.error("Login error:", error);
       toast({
@@ -69,7 +68,6 @@ export default function LoginPage() {
         title: "Login Failed",
         description: "Could not log in. Please try again.",
       });
-    } finally {
       setIsLoading(null);
     }
   };
@@ -81,23 +79,22 @@ export default function LoginPage() {
       try {
         await signInAnonymously(auth);
         sessionStorage.setItem('isAdminAuthenticated', 'true');
-        router.push("/admin/dashboard");
+        // No need to push, the useEffect will handle the redirect.
+        setIsAdminLoginOpen(false);
       } catch (error) {
          toast({
           variant: "destructive",
           title: "Admin Login Failed",
           description: "Could not start an admin session. Please try again.",
         });
-      } finally {
-        setIsLoading(null);
-        setIsAdminLoginOpen(false);
+         setIsLoading(null);
       }
     } else {
       setSecretCodeError("Invalid secret code. Please try again.");
     }
   };
 
-  if (loading || (user && (agentId || sessionStorage.getItem('isAdminAuthenticated') === 'true'))) {
+  if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -194,8 +191,8 @@ export default function LoginPage() {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setSecretCode('')}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAdminLogin}>
-              Authenticate
+            <AlertDialogAction onClick={handleAdminLogin} disabled={isLoading === 'admin'}>
+              {isLoading === 'admin' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Authenticate"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
