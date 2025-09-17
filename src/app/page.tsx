@@ -114,7 +114,7 @@ export default function PreLoginPage() {
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Secret Code</FormLabel>
-                                                <FormControl><Input type="password" placeholder="e.g., UNICORN" {...field} /></FormControl>
+                                                <FormControl><Input type="password" {...field} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
@@ -143,7 +143,7 @@ export default function PreLoginPage() {
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Protocol Code</FormLabel>
-                                                <FormControl><Input placeholder="e.g., ZYNQ50" {...field} /></FormControl>
+                                                <FormControl><Input {...field} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
