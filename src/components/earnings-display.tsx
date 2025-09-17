@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { collection, onSnapshot, query, doc, getDoc, where, setDoc, serverTimestamp } from "firebase/firestore";
+import { collection, onSnapshot, query, doc, getDoc, where, getDocs, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { DollarSign, Wallet, History, Hourglass, RefreshCw } from "lucide-react";
+import { DollarSign, Wallet, History, Hourglass, Trash2, Loader2 } from "lucide-react";
 import type { SalaryPayment } from "@/lib/types";
 
 const CALL_RATE = 15; // 15 rupees per call
@@ -23,7 +23,7 @@ export default function EarningsDisplay() {
   const [salaryPaid, setSalaryPaid] = useState(0);
   const [upcomingSalary, setUpcomingSalary] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [isResetting, setIsResetting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!agentId) {
@@ -97,25 +97,41 @@ export default function EarningsDisplay() {
 
   }, [agentId]);
 
-  const handleResetEarnings = async () => {
+  const handleClearCallLog = async () => {
     if (!agentId) return;
-    setIsResetting(true);
+    setIsDeleting(true);
     try {
-      const metaDocRef = doc(db, "agentMetadata", agentId);
-      await setDoc(metaDocRef, { lastResetAt: serverTimestamp() }, { merge: true });
-       toast({
-        title: "Earnings Reset!",
-        description: `Your earnings display has been reset to zero.`,
+      const callsQuery = query(collection(db, agentId));
+      const callsSnapshot = await getDocs(callsQuery);
+      
+      if (callsSnapshot.empty) {
+        toast({
+          title: "No logs to clear",
+          description: "Your call log is already empty.",
+        });
+        setIsDeleting(false);
+        return;
+      }
+
+      const batch = writeBatch(db);
+      callsSnapshot.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+
+      toast({
+        title: "Success!",
+        description: `All your call logs have been permanently deleted.`,
       });
     } catch (error) {
-       console.error("Error resetting earnings: ", error);
+       console.error("Error clearing call logs: ", error);
        toast({
         variant: "destructive",
-        title: "Reset Error",
-        description: "Could not reset earnings. Please try again.",
+        title: "Deletion Error",
+        description: "Could not clear call logs. Please try again.",
       });
     } finally {
-        setIsResetting(false);
+        setIsDeleting(false);
     }
   }
 
@@ -126,20 +142,21 @@ export default function EarningsDisplay() {
         <div className="flex items-center gap-2">
           <AlertDialog>
               <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" disabled={isResetting}>
-                      <RefreshCw className="mr-2 h-4 w-4" /> Reset Earnings
+                  <Button variant="destructive" size="sm" disabled={isDeleting}>
+                       {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                       Clear Call Log
                   </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                   <AlertDialogHeader>
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
-                      This will reset your displayed earnings to zero. All your previous call logs will be kept, but the earnings calculation will start over from now. This action cannot be undone.
+                      This action is permanent and cannot be undone. This will delete all your call log entries from the database, and your earnings will be reset to zero.
                   </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleResetEarnings}>Confirm Reset</AlertDialogAction>
+                  <AlertDialogAction onClick={handleClearCallLog} className="bg-destructive hover:bg-destructive/90">Confirm & Delete</AlertDialogAction>
                   </AlertDialogFooter>
               </AlertDialogContent>
           </AlertDialog>
