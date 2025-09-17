@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
-import { Headset, LogOut, User as UserIcon } from "lucide-react";
+import { Headset, LogOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,17 +19,21 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export default function Header() {
-  const { user } = useAuth();
+  const { user, agentId, setAgentId } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
     await signOut(auth);
+    if (setAgentId) {
+      setAgentId(null);
+    }
     router.push("/login");
   };
 
-  const getInitials = (email: string | null | undefined) => {
-    if (!email) return 'A';
-    return email.charAt(0).toUpperCase();
+  const getInitials = (id: string | null | undefined) => {
+    if (!id) return 'A';
+    // Return the first two characters for ZN001 -> ZN
+    return id.substring(0, 2).toUpperCase();
   }
 
   return (
@@ -39,13 +43,13 @@ export default function Header() {
           <Headset className="h-6 w-6 text-primary" />
           <span className="text-lg font-bold">AgentAssist</span>
         </Link>
-        {user && (
+        {user && agentId && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-9 w-9">
                    <AvatarFallback className="bg-primary text-primary-foreground">
-                    {getInitials(user.email)}
+                    {getInitials(agentId)}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -55,7 +59,7 @@ export default function Header() {
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">Signed in as</p>
                   <p className="text-xs leading-none text-muted-foreground truncate">
-                    {user.email}
+                    Agent {agentId}
                   </p>
                 </div>
               </DropdownMenuLabel>

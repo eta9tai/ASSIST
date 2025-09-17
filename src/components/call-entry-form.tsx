@@ -38,7 +38,7 @@ const formSchema = z.object({
 });
 
 export default function CallEntryForm() {
-  const { user } = useAuth();
+  const { agentId } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -53,20 +53,20 @@ export default function CallEntryForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!user) {
+    if (!agentId) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "You must be logged in to submit an entry.",
+        description: "No agent selected. Please log in again.",
       });
       return;
     }
 
     setIsLoading(true);
     try {
-      await addDoc(collection(db, "agents"), {
+      // Use the agentId as the collection name
+      await addDoc(collection(db, agentId), {
         ...values,
-        agentId: user.uid,
         createdAt: serverTimestamp(),
       });
       toast({
@@ -159,7 +159,7 @@ export default function CallEntryForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isLoading}>
+            <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isLoading || !agentId}>
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save Entry"}
             </Button>
           </form>

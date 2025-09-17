@@ -7,5 +7,4 @@ export type CallEntry = {
   notes: string;
   outcome: "Resolved" | "Escalated" | "Follow-up Required";
   createdAt: Timestamp;
-  agentId: string;
 };

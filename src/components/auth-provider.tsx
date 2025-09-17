@@ -12,17 +12,36 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [agentId, setAgentIdState] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
+      if (user) {
+        // When auth state loads, also load agentId from localStorage
+        const storedAgentId = localStorage.getItem('agentId');
+        setAgentIdState(storedAgentId);
+      } else {
+        // Clear agentId on logout
+        localStorage.removeItem('agentId');
+        setAgentIdState(null);
+      }
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  const value = { user, loading };
+  const setAgentId = (id: string | null) => {
+    if (id) {
+      localStorage.setItem('agentId', id);
+    } else {
+      localStorage.removeItem('agentId');
+    }
+    setAgentIdState(id);
+  };
+
+  const value = { user, agentId, loading, setAgentId };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

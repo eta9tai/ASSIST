@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import type { CallEntry } from "@/lib/types";
@@ -19,42 +19,37 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CallHistory() {
-  const { user } = useAuth();
+  const { agentId } = useAuth();
   const [callEntries, setCallEntries] = useState<CallEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
+    if (!agentId) {
         setIsLoading(false);
+        setCallEntries([]);
         return;
     };
 
-    // This query now explicitly looks for documents that are call entries
-    // by checking for the clientName field, in addition to matching the agentId.
+    // The collection name is now the agent's ID (e.g., "ZN001")
     const q = query(
-      collection(db, "agents"),
-      where("agentId", "==", user.uid),
-      where("clientName", "!=", null),
+      collection(db, agentId),
       orderBy("createdAt", "desc")
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const entries: CallEntry[] = [];
       querySnapshot.forEach((doc) => {
-        // We only push documents that look like call entries
-        if (doc.data().clientName) {
-            entries.push({ id: doc.id, ...doc.data() } as CallEntry);
-        }
+        entries.push({ id: doc.id, ...doc.data() } as CallEntry);
       });
       setCallEntries(entries);
       setIsLoading(false);
     }, (error) => {
-        console.error("Error fetching call history: ", error);
+        console.error(`Error fetching call history for ${agentId}: `, error);
         setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [agentId]);
 
   const getBadgeVariant = (outcome: CallEntry["outcome"]) => {
     switch (outcome) {
@@ -72,7 +67,7 @@ export default function CallHistory() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent Call History</CardTitle>
+        <CardTitle>Recent Call History ({agentId})</CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
@@ -107,7 +102,7 @@ export default function CallHistory() {
             ) : (
               <TableRow>
                 <TableCell colSpan={3} className="h-24 text-center">
-                  No call entries found.
+                  No call entries found for this agent.
                 </TableCell>
               </TableRow>
             )}
