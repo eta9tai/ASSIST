@@ -24,12 +24,15 @@ export default function CallHistory() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // If agentId is not yet available, don't do anything.
+    // Set loading to false and clear entries if it's explicitly null after loading.
     if (!agentId) {
         setIsLoading(false);
         setCallEntries([]);
         return;
     };
 
+    setIsLoading(true);
     // The collection name is now the agent's ID (e.g., "ZN001")
     const q = query(
       collection(db, agentId),
@@ -48,8 +51,9 @@ export default function CallHistory() {
         setIsLoading(false);
     });
 
+    // Cleanup the listener when the component unmounts or agentId changes.
     return () => unsubscribe();
-  }, [agentId]);
+  }, [agentId]); // This effect re-runs whenever agentId changes.
 
   const getBadgeVariant = (outcome: CallEntry["outcome"]) => {
     switch (outcome) {
@@ -67,7 +71,7 @@ export default function CallHistory() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent Call History ({agentId})</CardTitle>
+        <CardTitle>Recent Call History ({agentId || '...'})</CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
