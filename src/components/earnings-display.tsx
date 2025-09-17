@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Wallet, History } from "lucide-react";
+import { DollarSign, Wallet, History, Hourglass } from "lucide-react";
 import type { SalaryPayment } from "@/lib/types";
 
 const CALL_RATE = 15; // 15 rupees per call
@@ -35,7 +35,6 @@ export default function EarningsDisplay() {
       setTotalEarnings(earnings);
     }, (error) => {
       console.error("Error fetching calls for earnings:", error);
-      // Even if calls fail, we might still get salary
     });
 
     // Listener for salary payments
@@ -47,19 +46,20 @@ export default function EarningsDisplay() {
         totalPaid += payment.amount || 0;
       });
       setSalaryPaid(totalPaid);
-      setIsLoading(false); // Stop loading after salary is fetched
+      setIsLoading(false); 
     }, (error) => {
         console.error("Error fetching salary:", error);
-        setSalaryPaid(0); // Assume 0 if there's an error
+        setSalaryPaid(0); 
         setIsLoading(false);
     });
 
-    // Cleanup listeners on unmount or when agentId changes
     return () => {
       unsubscribeCalls();
       unsubscribeSalary();
     };
   }, [agentId]);
+
+  const pendingAmount = totalEarnings - salaryPaid;
 
   return (
     <Card>
@@ -72,14 +72,14 @@ export default function EarningsDisplay() {
           </Link>
         </Button>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="flex items-center space-x-4 rounded-md border p-4">
             <div className="flex-shrink-0 bg-primary text-primary-foreground rounded-full p-3">
                 <DollarSign className="h-6 w-6" />
             </div>
             <div className="flex-1 space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">
-                Total Earnings (Till Now)
+                Total Earnings
                 </p>
                 {isLoading ? (
                     <Skeleton className="h-6 w-24" />
@@ -100,6 +100,21 @@ export default function EarningsDisplay() {
                     <Skeleton className="h-6 w-24" />
                 ) : (
                     <p className="text-2xl font-bold">₹{salaryPaid.toLocaleString()}</p>
+                )}
+            </div>
+        </div>
+        <div className="flex items-center space-x-4 rounded-md border p-4">
+            <div className="flex-shrink-0 bg-secondary text-secondary-foreground rounded-full p-3">
+                <Hourglass className="h-6 w-6" />
+            </div>
+            <div className="flex-1 space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">
+                Pending Amount
+                </p>
+                 {isLoading ? (
+                    <Skeleton className="h-6 w-24" />
+                ) : (
+                    <p className="text-2xl font-bold">₹{pendingAmount.toLocaleString()}</p>
                 )}
             </div>
         </div>
