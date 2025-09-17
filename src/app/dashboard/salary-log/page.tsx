@@ -19,16 +19,11 @@ export default function SalaryLogPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // If auth is loading, we are definitely loading data.
-    if (authLoading) {
+    // Do absolutely nothing until the authentication check is complete and we have an agentId.
+    // This is the key fix to prevent premature queries.
+    if (authLoading || !agentId) {
+      // If we are still loading auth or don't have an agentId yet, keep showing the loading state.
       setIsLoading(true);
-      return;
-    }
-
-    // If auth is done but we have no agentId, stop loading and show empty state.
-    if (!agentId) {
-      setIsLoading(false);
-      setPayments([]);
       return;
     }
 
