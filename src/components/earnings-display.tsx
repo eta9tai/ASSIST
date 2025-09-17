@@ -54,17 +54,9 @@ export default function EarningsDisplay() {
         });
 
         const paymentsCollectionRef = collection(db, "salary", agentId, "payments");
-        let salaryQuery = query(
-          paymentsCollectionRef,
-          where("status", "in", ["Credited", "Issued"])
-        );
-
+        let salaryQuery = query(paymentsCollectionRef);
         if (lastResetAt) {
-          salaryQuery = query(
-              paymentsCollectionRef, 
-              where("status", "in", ["Credited", "Issued"]), 
-              where("date", ">", lastResetAt)
-          );
+          salaryQuery = query(salaryQuery, where("date", ">", lastResetAt));
         }
         
         const unsubscribeSalary = onSnapshot(salaryQuery, (snapshot) => {

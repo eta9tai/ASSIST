@@ -216,18 +216,20 @@ export default function AdminDashboardPage() {
         const callsSnapshot = await getDocs(callsQuery);
         const totalEarnings = callsSnapshot.size * CALL_RATE;
         
-        const salaryQuery = query(
-          collection(db, "salary", values.agentId, "payments"),
-          where("status", "in", ["Credited", "Issued"]),
-        );
-        let effectiveSalaryQuery = salaryQuery;
+        const paymentsCollectionRef = collection(db, "salary", values.agentId, "payments");
+        let salaryQuery = query(paymentsCollectionRef);
         if (lastResetAt) {
-             effectiveSalaryQuery = query(salaryQuery, where("date", ">", lastResetAt));
+             salaryQuery = query(salaryQuery, where("date", ">", lastResetAt));
         }
 
-        const salarySnapshot = await getDocs(effectiveSalaryQuery);
+        const salarySnapshot = await getDocs(salaryQuery);
         let totalPaid = 0;
-        salarySnapshot.forEach(doc => { totalPaid += doc.data().amount || 0; });
+        salarySnapshot.forEach(doc => { 
+            const payment = doc.data() as SalaryPayment;
+             if (payment.status === 'Credited' || payment.status === 'Issued') {
+                totalPaid += payment.amount || 0;
+             }
+        });
         
         const pendingAmount = totalEarnings - totalPaid;
 
