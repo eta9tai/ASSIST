@@ -31,15 +31,27 @@ import { Headset, Loader2, User, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 const ADMIN_SECRET_CODE = "BPCS2030";
+const AGENT_SECRET_CODES: Record<string, string> = {
+  ZN001: "0",
+  ZN002: "2025",
+};
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user, agentId, setAgentId, loading } = useAuth();
   const [isLoading, setIsLoading] = useState<string | null>(null);
+  
+  // State for Admin Login Dialog
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
-  const [secretCode, setSecretCode] = useState("");
-  const [secretCodeError, setSecretCodeError] = useState("");
+  const [adminSecretCode, setAdminSecretCode] = useState("");
+  const [adminSecretCodeError, setAdminSecretCodeError] = useState("");
+
+  // State for Agent Login Dialog
+  const [isAgentLoginOpen, setIsAgentLoginOpen] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<'ZN001' | 'ZN002' | null>(null);
+  const [agentSecretCode, setAgentSecretCode] = useState("");
+  const [agentSecretCodeError, setAgentSecretCodeError] = useState("");
   
   useEffect(() => {
     // If done loading, check for authentication status and redirect if necessary.
@@ -52,35 +64,49 @@ export default function LoginPage() {
     }
   }, [user, agentId, loading, router]);
 
+  const openAgentLoginDialog = (agent: 'ZN001' | 'ZN002') => {
+    setSelectedAgent(agent);
+    setAgentSecretCode("");
+    setAgentSecretCodeError("");
+    setIsAgentLoginOpen(true);
+  };
 
-  const handleAgentLogin = async (agent: 'ZN001' | 'ZN002') => {
-    setIsLoading(agent);
-    try {
-      const userCredential = await signInAnonymously(auth);
-      if (setAgentId) {
-        setAgentId(agent);
+  const handleAgentLogin = async () => {
+    if (!selectedAgent) return;
+    setAgentSecretCodeError("");
+
+    if (agentSecretCode === AGENT_SECRET_CODES[selectedAgent]) {
+      setIsLoading(selectedAgent);
+      try {
+        const userCredential = await signInAnonymously(auth);
+        if (setAgentId) {
+          setAgentId(selectedAgent);
+        }
+        setIsAgentLoginOpen(false);
+        // No need to push, the useEffect will handle the redirect.
+      } catch (error: any) {
+        console.error("Login error:", error);
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: "Could not log in. Please try again.",
+        });
+        setIsLoading(null);
       }
-      // No need to push, the useEffect will handle the redirect.
-    } catch (error: any) {
-      console.error("Login error:", error);
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: "Could not log in. Please try again.",
-      });
-      setIsLoading(null);
+    } else {
+      setAgentSecretCodeError("Invalid secret code. Please try again.");
     }
   };
   
   const handleAdminLogin = async () => {
-    setSecretCodeError("");
-    if (secretCode === ADMIN_SECRET_CODE) {
+    setAdminSecretCodeError("");
+    if (adminSecretCode === ADMIN_SECRET_CODE) {
       setIsLoading('admin');
       try {
         await signInAnonymously(auth);
         sessionStorage.setItem('isAdminAuthenticated', 'true');
-        // No need to push, the useEffect will handle the redirect.
         setIsAdminLoginOpen(false);
+        // No need to push, the useEffect will handle the redirect.
       } catch (error) {
          toast({
           variant: "destructive",
@@ -90,7 +116,7 @@ export default function LoginPage() {
          setIsLoading(null);
       }
     } else {
-      setSecretCodeError("Invalid secret code. Please try again.");
+      setAdminSecretCodeError("Invalid secret code. Please try again.");
     }
   };
 
@@ -117,7 +143,7 @@ export default function LoginPage() {
             <Button
               size="lg"
               className="w-full"
-              onClick={() => handleAgentLogin('ZN001')}
+              onClick={() => openAgentLoginDialog('ZN001')}
               disabled={!!isLoading}
             >
               {isLoading === 'ZN001' ? (
@@ -131,7 +157,7 @@ export default function LoginPage() {
               size="lg"
               variant="secondary"
               className="w-full"
-              onClick={() => handleAgentLogin('ZN002')}
+              onClick={() => openAgentLoginDialog('ZN002')}
               disabled={!!isLoading}
             >
               {isLoading === 'ZN002' ? (
@@ -169,6 +195,37 @@ export default function LoginPage() {
         </Card>
       </div>
 
+      {/* Agent Login Dialog */}
+      <AlertDialog open={isAgentLoginOpen} onOpenChange={setIsAgentLoginOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Agent Authentication</AlertDialogTitle>
+            <AlertDialogDescription>
+              Please enter the secret code for Agent {selectedAgent}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="agent-secret-code">Secret Code</Label>
+            <Input
+              id="agent-secret-code"
+              type="password"
+              placeholder="Enter your code"
+              value={agentSecretCode}
+              onChange={(e) => setAgentSecretCode(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAgentLogin()}
+            />
+             {agentSecretCodeError && <p className="text-sm font-medium text-destructive">{agentSecretCodeError}</p>}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAgentLogin} disabled={isLoading === selectedAgent}>
+              {isLoading === selectedAgent ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Authenticate"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Admin Login Dialog */}
       <AlertDialog open={isAdminLoginOpen} onOpenChange={setIsAdminLoginOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -178,19 +235,19 @@ export default function LoginPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="secret-code">Secret Code</Label>
+            <Label htmlFor="admin-secret-code">Secret Code</Label>
             <Input
-              id="secret-code"
+              id="admin-secret-code"
               type="password"
               placeholder="Enter your code"
-              value={secretCode}
-              onChange={(e) => setSecretCode(e.target.value)}
+              value={adminSecretCode}
+              onChange={(e) => setAdminSecretCode(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
             />
-             {secretCodeError && <p className="text-sm font-medium text-destructive">{secretCodeError}</p>}
+             {adminSecretCodeError && <p className="text-sm font-medium text-destructive">{adminSecretCodeError}</p>}
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setSecretCode('')}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setAdminSecretCode('')}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleAdminLogin} disabled={isLoading === 'admin'}>
               {isLoading === 'admin' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Authenticate"}
             </AlertDialogAction>
