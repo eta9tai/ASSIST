@@ -30,7 +30,7 @@ export default function CallHistory() {
     };
 
     const q = query(
-      collection(db, "clients"),
+      collection(db, "agents"),
       where("agentId", "==", user.uid),
       orderBy("createdAt", "desc")
     );
