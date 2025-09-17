@@ -85,6 +85,23 @@ export default function LoginPage() {
     }
   };
 
+  const handleAdmin2Login = async () => {
+    setIsLoading('admin2');
+    try {
+      await signInAnonymously(auth);
+      sessionStorage.setItem('isAdminAuthenticated', 'true');
+      router.push("/admin/dashboard");
+    } catch (error) {
+       toast({
+        variant: "destructive",
+        title: "Admin Login Failed",
+        description: "Could not start an admin session. Please try again.",
+      });
+    } finally {
+      setIsLoading(null);
+    }
+  };
+
   return (
     <>
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -147,6 +164,20 @@ export default function LoginPage() {
                 <ShieldCheck className="mr-2 h-4 w-4" />
               )}
               Finance Admin
+            </Button>
+             <Button
+              size="lg"
+              variant="outline"
+              className="w-full"
+              onClick={handleAdmin2Login}
+              disabled={!!isLoading}
+            >
+               {isLoading === 'admin2' ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ShieldCheck className="mr-2 h-4 w-4" />
+              )}
+              Finance Admin 2
             </Button>
           </CardContent>
         </Card>
