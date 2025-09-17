@@ -74,6 +74,8 @@ function AgentPaymentHistory({ agentId, companyFunds }: { agentId: "ZN001" | "ZN
         });
         return;
     }
+    
+    const paymentAmount = payment.amount || 0;
 
     setIsUpdating(payment.id);
     try {
@@ -86,7 +88,7 @@ function AgentPaymentHistory({ agentId, companyFunds }: { agentId: "ZN001" | "ZN
       batch.update(paymentDocRef, { status: "Credited" });
       
       // 2. Decrement the company funds
-      batch.update(fundsDocRef, { balance: increment(-(payment.amount || 0)) });
+      batch.update(fundsDocRef, { balance: increment(-paymentAmount) });
       
       await batch.commit();
 
@@ -193,6 +195,7 @@ export default function AdminDashboardPage() {
   const [companyFunds, setCompanyFunds] = useState<number | null>(null);
 
   useEffect(() => {
+    // This check MUST run only on the client-side
     const isAdmin = sessionStorage.getItem('isAdminAuthenticated');
     if (isAdmin !== 'true') {
       router.replace('/login');
@@ -202,6 +205,9 @@ export default function AdminDashboardPage() {
   }, [router]);
 
   useEffect(() => {
+    // This effect can run if auth check passes
+    if (isCheckingAuth) return;
+
     const fundsDocRef = doc(db, "company", "funds");
     const unsubscribe = onSnapshot(fundsDocRef, (doc) => {
         if (doc.exists()) {
@@ -214,7 +220,7 @@ export default function AdminDashboardPage() {
         setCompanyFunds(null);
     });
     return () => unsubscribe();
-  }, []);
+  }, [isCheckingAuth]);
 
   const salaryForm = useForm<z.infer<typeof salaryFormSchema>>({
     resolver: zodResolver(salaryFormSchema),
