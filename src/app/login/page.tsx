@@ -14,26 +14,39 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Headset, Loader2, User } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Headset, Loader2, User, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+
+const ADMIN_SECRET_CODE = "BPCS2030";
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { setAgentId } = useAuth();
   const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
+  const [secretCode, setSecretCode] = useState("");
+  const [secretCodeError, setSecretCodeError] = useState("");
 
-  const handleLogin = async (agent: 'ZN001' | 'ZN002') => {
+  const handleAgentLogin = async (agent: 'ZN001' | 'ZN002') => {
     setIsLoading(agent);
     try {
-      // Sign in anonymously to get a session
       await signInAnonymously(auth);
-      
-      // Set the selected agent ID in our auth context/local storage
       if (setAgentId) {
         setAgentId(agent);
       }
-      
       router.push("/dashboard");
     } catch (error: any) {
       console.error("Login error:", error);
@@ -46,47 +59,126 @@ export default function LoginPage() {
       setIsLoading(null);
     }
   };
+  
+  const handleAdminLogin = async () => {
+    setSecretCodeError("");
+    if (secretCode === ADMIN_SECRET_CODE) {
+      setIsLoading('admin');
+      try {
+        await signInAnonymously(auth);
+        // We use sessionStorage to grant access for this session only.
+        sessionStorage.setItem('isAdminAuthenticated', 'true');
+        router.push("/admin/salary");
+      } catch (error) {
+         toast({
+          variant: "destructive",
+          title: "Admin Login Failed",
+          description: "Could not start an admin session. Please try again.",
+        });
+      } finally {
+        setIsLoading(null);
+        setIsAdminLoginOpen(false);
+      }
+    } else {
+      setSecretCodeError("Invalid secret code. Please try again.");
+    }
+  };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto bg-primary text-primary-foreground rounded-full p-3 w-fit mb-4">
-            <Headset className="h-8 w-8" />
+    <>
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto bg-primary text-primary-foreground rounded-full p-3 w-fit mb-4">
+              <Headset className="h-8 w-8" />
+            </div>
+            <CardTitle className="text-2xl font-bold tracking-tight">Select Profile</CardTitle>
+            <CardDescription>Choose your profile to log in</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button
+              size="lg"
+              className="w-full"
+              onClick={() => handleAgentLogin('ZN001')}
+              disabled={!!isLoading}
+            >
+              {isLoading === 'ZN001' ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <User className="mr-2 h-4 w-4" />
+              )}
+              Login as ZN001
+            </Button>
+            <Button
+              size="lg"
+              variant="secondary"
+              className="w-full"
+              onClick={() => handleAgentLogin('ZN002')}
+              disabled={!!isLoading}
+            >
+              {isLoading === 'ZN002' ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <User className="mr-2 h-4 w-4" />
+              )}
+              Login as ZN002
+            </Button>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or
+                </span>
+              </div>
+            </div>
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full"
+              onClick={() => setIsAdminLoginOpen(true)}
+              disabled={!!isLoading}
+            >
+               {isLoading === 'admin' ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ShieldCheck className="mr-2 h-4 w-4" />
+              )}
+              Finance Admin
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <AlertDialog open={isAdminLoginOpen} onOpenChange={setIsAdminLoginOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Admin Authentication</AlertDialogTitle>
+            <AlertDialogDescription>
+              Please enter the Finance Admin secret code to proceed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="secret-code">Secret Code</Label>
+            <Input
+              id="secret-code"
+              type="password"
+              placeholder="Enter your code"
+              value={secretCode}
+              onChange={(e) => setSecretCode(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
+            />
+             {secretCodeError && <p className="text-sm font-medium text-destructive">{secretCodeError}</p>}
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight">Select Agent</CardTitle>
-          <CardDescription>Choose your agent profile to log in</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Button
-            size="lg"
-            className="w-full"
-            onClick={() => handleLogin('ZN001')}
-            disabled={!!isLoading}
-          >
-            {isLoading === 'ZN001' ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <User className="mr-2 h-4 w-4" />
-            )}
-            Login as ZN001
-          </Button>
-          <Button
-            size="lg"
-            variant="secondary"
-            className="w-full"
-            onClick={() => handleLogin('ZN002')}
-            disabled={!!isLoading}
-          >
-            {isLoading === 'ZN002' ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <User className="mr-2 h-4 w-4" />
-            )}
-            Login as ZN002
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSecretCode('')}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAdminLogin}>
+              Authenticate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
