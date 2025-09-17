@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -64,10 +65,8 @@ export default function CallEntryForm() {
 
     setIsLoading(true);
     try {
-      // Generate a random 5-digit call ID
       const callId = Math.floor(10000 + Math.random() * 90000).toString();
 
-      // Use the agentId as the collection name
       await addDoc(collection(db, agentId), {
         ...values,
         callId,
@@ -163,7 +162,7 @@ export default function CallEntryForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isLoading || !agentId}>
+            <Button type="submit" className="w-full" disabled={isLoading || !agentId}>
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save Entry"}
             </Button>
           </form>

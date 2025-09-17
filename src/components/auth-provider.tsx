@@ -12,27 +12,25 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
   const [agentId, setAgentIdState] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // This function runs when the component first loads.
-    const storedAgentId = localStorage.getItem('agentId');
-    setAgentIdState(storedAgentId);
-
-    // Set up the listener for Firebase auth changes.
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
-      if (!user) {
-        // If user logs out, clear agentId from state and storage
+      if (user) {
+        // If user is logged in, try to get agentId from localStorage
+        const storedAgentId = localStorage.getItem('agentId');
+        setAgentIdState(storedAgentId);
+      } else {
+        // If user logs out, clear agentId
         localStorage.removeItem('agentId');
         setAgentIdState(null);
       }
-      // Regardless of user state, once this check is done, we are no longer loading.
       setLoading(false);
     });
 
-    // Clean up the listener when the component is unmounted.
+    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
@@ -44,10 +42,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
     setAgentIdState(id);
   };
-
+  
   const value = { user, agentId, loading, setAgentId };
 
-  // While the initial loading is true, we don't render the children
-  // to prevent race conditions. Once loading is false, the app can render.
-  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

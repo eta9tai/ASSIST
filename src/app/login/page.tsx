@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signInAnonymously } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -35,11 +35,24 @@ const ADMIN_SECRET_CODE = "BPCS2030";
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { setAgentId } = useAuth();
+  const { user, agentId, setAgentId, loading } = useAuth();
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
   const [secretCode, setSecretCode] = useState("");
   const [secretCodeError, setSecretCodeError] = useState("");
+  
+  useEffect(() => {
+    // If done loading and user is logged in with an agentId, redirect to dashboard
+    if (!loading) {
+      if (user && agentId) {
+        router.replace("/dashboard");
+      }
+      if (user && sessionStorage.getItem('isAdminAuthenticated') === 'true') {
+        router.replace('/admin/dashboard');
+      }
+    }
+  }, [user, agentId, loading, router]);
+
 
   const handleAgentLogin = async (agent: 'ZN001' | 'ZN002') => {
     setIsLoading(agent);
@@ -67,7 +80,6 @@ export default function LoginPage() {
       setIsLoading('admin');
       try {
         await signInAnonymously(auth);
-        // We use sessionStorage to grant access for this session only.
         sessionStorage.setItem('isAdminAuthenticated', 'true');
         router.push("/admin/dashboard");
       } catch (error) {
@@ -84,6 +96,14 @@ export default function LoginPage() {
       setSecretCodeError("Invalid secret code. Please try again.");
     }
   };
+
+  if (loading || (user && (agentId || sessionStorage.getItem('isAdminAuthenticated') === 'true'))) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -183,5 +203,3 @@ export default function LoginPage() {
     </>
   );
 }
-
-    

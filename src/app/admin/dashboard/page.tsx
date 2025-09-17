@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, PlusCircle, CheckCircle, XCircle, RefreshCw } from "lucide-react";
+import { Loader2, PlusCircle, CheckCircle, XCircle, RefreshCw, LogOut } from "lucide-react";
 
 const salaryFormSchema = z.object({
   agentId: z.enum(["ZN001", "ZN002"], { required_error: "You must select an agent." }),
@@ -205,12 +205,10 @@ export default function AdminDashboardPage() {
 
       if (values.settleAccount) {
         
-        // Fetch the last reset timestamp
         const metaDocRef = doc(db, "agentMetadata", values.agentId);
         const metaDoc = await getDoc(metaDocRef);
         const lastResetAt = metaDoc.exists() ? metaDoc.data().lastResetAt : null;
 
-        // Query calls after the reset date
         let callsQuery = query(collection(db, values.agentId));
         if (lastResetAt) {
           callsQuery = query(callsQuery, where("createdAt", ">", lastResetAt));
@@ -293,6 +291,11 @@ export default function AdminDashboardPage() {
         setIsLoading(false);
     }
   }
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('isAdminAuthenticated');
+    router.replace('/login');
+  };
   
   if (isCheckingAuth) {
     return (
@@ -309,80 +312,86 @@ export default function AdminDashboardPage() {
           <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
           <p className="text-muted-foreground">Issue salaries and track payment history.</p>
         </div>
-        <Dialog open={isSalaryDialogOpen} onOpenChange={setIsSalaryDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Issue Salary
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Issue Salary to Agent</DialogTitle>
-            </DialogHeader>
-            <Form {...salaryForm}>
-              <form onSubmit={salaryForm.handleSubmit(onSalarySubmit)} className="space-y-6 py-4">
-               <FormField
-                  control={salaryForm.control}
-                  name="agentId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Select Agent</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Choose an agent..." /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          <SelectItem value="ZN001">Agent ZN001</SelectItem>
-                          <SelectItem value="ZN002">Agent ZN002</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+        <div className="flex items-center gap-4">
+          <Dialog open={isSalaryDialogOpen} onOpenChange={setIsSalaryDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Issue Salary
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Issue Salary to Agent</DialogTitle>
+              </DialogHeader>
+              <Form {...salaryForm}>
+                <form onSubmit={salaryForm.handleSubmit(onSalarySubmit)} className="space-y-6 py-4">
                 <FormField
-                  control={salaryForm.control}
-                  name="purpose"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Purpose of Payment</FormLabel>
-                      <FormControl><Input placeholder="e.g., Monthly Salary, Advance" {...field} disabled={watchSettleAccount} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={salaryForm.control}
-                  name="amount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Amount (₹)</FormLabel>
-                      <FormControl><Input type="number" placeholder="e.g., 5000" {...field} disabled={watchSettleAccount} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={salaryForm.control}
-                  name="settleAccount"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-                      <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>Settle Account</FormLabel>
-                        <p className="text-sm text-muted-foreground">
-                          Automatically pay the agent's full pending balance.
-                        </p>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Issue Salary to Agent"}
-                </Button>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+                    control={salaryForm.control}
+                    name="agentId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Select Agent</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Choose an agent..." /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="ZN001">Agent ZN001</SelectItem>
+                            <SelectItem value="ZN002">Agent ZN002</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={salaryForm.control}
+                    name="purpose"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Purpose of Payment</FormLabel>
+                        <FormControl><Input placeholder="e.g., Monthly Salary, Advance" {...field} disabled={watchSettleAccount} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={salaryForm.control}
+                    name="amount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Amount (₹)</FormLabel>
+                        <FormControl><Input type="number" placeholder="e.g., 5000" {...field} disabled={watchSettleAccount} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={salaryForm.control}
+                    name="settleAccount"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>Settle Account</FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            Automatically pay the agent's full pending balance.
+                          </p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Issue Salary to Agent"}
+                  </Button>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+          <Button variant="outline" onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Logout
+          </Button>
+        </div>
       </div>
       
       <Card>
@@ -452,5 +461,3 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
-
-    

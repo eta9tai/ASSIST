@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, onSnapshot, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import type { CallEntry } from "@/lib/types";
@@ -25,16 +26,13 @@ export default function CallHistory() {
 
   useEffect(() => {
     if (!agentId) {
-      // If there's no agentId, don't do anything. 
-      // This is the key change to prevent premature queries.
-      setIsLoading(true);
+      setIsLoading(true); // Keep loading if no agentId
       return;
     }
 
-    // Set loading to true when we start fetching for a new agent
     setIsLoading(true);
 
-    const q = query(collection(db, agentId), orderBy("createdAt", "desc"));
+    const q = query(collection(db, agentId), orderBy("createdAt", "desc"), limit(10));
 
     const unsubscribe = onSnapshot(
       q,
@@ -44,17 +42,16 @@ export default function CallHistory() {
           entries.push({ id: doc.id, ...doc.data() } as CallEntry);
         });
         setCallEntries(entries);
-        setIsLoading(false); // Data loaded, stop loading
+        setIsLoading(false);
       },
       (error) => {
         console.error(`Error fetching call history for ${agentId}: `, error);
-        setIsLoading(false); // Error occurred, stop loading
+        setIsLoading(false);
       }
     );
 
-    // Cleanup the listener when the component unmounts or agentId changes.
     return () => unsubscribe();
-  }, [agentId]); // The effect now *only* depends on agentId.
+  }, [agentId]);
 
   const getBadgeVariant = (outcome: CallEntry["outcome"]) => {
     switch (outcome) {

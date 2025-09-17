@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -27,12 +28,12 @@ export default function Header() {
     if (setAgentId) {
       setAgentId(null);
     }
+    sessionStorage.removeItem('isAdminAuthenticated');
     router.push("/login");
   };
 
   const getInitials = (id: string | null | undefined) => {
     if (!id) return 'A';
-    // Return the first two characters for ZN001 -> ZN
     return id.substring(0, 2).toUpperCase();
   }
 

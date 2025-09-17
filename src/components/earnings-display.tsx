@@ -30,34 +30,29 @@ export default function EarningsDisplay() {
     setIsLoading(true);
 
     const setupListeners = async () => {
-      // Fetch the last reset timestamp for the agent
       const metaDocRef = doc(db, "agentMetadata", agentId);
       const metaDoc = await getDoc(metaDocRef);
       const lastResetAt = metaDoc.exists() ? metaDoc.data().lastResetAt : null;
 
-      // Listener for call entries to calculate earnings
       let callsQuery = query(collection(db, agentId));
       if (lastResetAt) {
-        // If a reset date exists, only get calls created after that date
         callsQuery = query(callsQuery, where("createdAt", ">", lastResetAt));
       }
       
       const unsubscribeCalls = onSnapshot(callsQuery, (snapshot) => {
         const earnings = snapshot.size * CALL_RATE;
         setTotalEarnings(earnings);
-        setIsLoading(false); // Set loading to false after first calculation
+        setIsLoading(false);
       }, (error) => {
         console.error("Error fetching calls for earnings:", error);
         setIsLoading(false);
       });
 
-      // Listener for salary payments
       let salaryQuery = query(
         collection(db, "salary", agentId, "payments"),
         where("status", "in", ["Credited", "Issued"])
       );
       if (lastResetAt) {
-        // If a reset date exists, only get payments made after that date
         salaryQuery = query(salaryQuery, where("date", ">", lastResetAt));
       }
       
@@ -77,8 +72,6 @@ export default function EarningsDisplay() {
         setUpcomingSalary(totalUpcoming);
       }, (error) => {
           console.error("Error fetching salary:", error);
-          setSalaryPaid(0);
-          setUpcomingSalary(0);
       });
 
       return () => {
