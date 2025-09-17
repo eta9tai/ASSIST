@@ -19,37 +19,42 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CallHistory() {
-  const { agentId, loading: authLoading } = useAuth();
+  const { agentId } = useAuth();
   const [callEntries, setCallEntries] = useState<CallEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Wait until authentication is resolved and we have an agentId
-    if (authLoading || !agentId) {
-      setIsLoading(true); // Keep showing skeleton loader
+    if (!agentId) {
+      // If there's no agentId, don't do anything. 
+      // This is the key change to prevent premature queries.
+      setIsLoading(true);
       return;
     }
 
-    const q = query(
-      collection(db, agentId),
-      orderBy("createdAt", "desc")
-    );
+    // Set loading to true when we start fetching for a new agent
+    setIsLoading(true);
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const entries: CallEntry[] = [];
-      querySnapshot.forEach((doc) => {
-        entries.push({ id: doc.id, ...doc.data() } as CallEntry);
-      });
-      setCallEntries(entries);
-      setIsLoading(false);
-    }, (error) => {
+    const q = query(collection(db, agentId), orderBy("createdAt", "desc"));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const entries: CallEntry[] = [];
+        querySnapshot.forEach((doc) => {
+          entries.push({ id: doc.id, ...doc.data() } as CallEntry);
+        });
+        setCallEntries(entries);
+        setIsLoading(false); // Data loaded, stop loading
+      },
+      (error) => {
         console.error(`Error fetching call history for ${agentId}: `, error);
-        setIsLoading(false);
-    });
+        setIsLoading(false); // Error occurred, stop loading
+      }
+    );
 
     // Cleanup the listener when the component unmounts or agentId changes.
     return () => unsubscribe();
-  }, [agentId, authLoading]);
+  }, [agentId]); // The effect now *only* depends on agentId.
 
   const getBadgeVariant = (outcome: CallEntry["outcome"]) => {
     switch (outcome) {
