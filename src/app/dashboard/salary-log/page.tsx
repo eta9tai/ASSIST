@@ -19,20 +19,20 @@ export default function SalaryLogPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // If auth is still loading, do nothing and show skeleton.
+    // If auth is loading, we are definitely loading data.
     if (authLoading) {
       setIsLoading(true);
       return;
     }
 
-    // If auth is done but there is no agentId, stop loading and show empty state.
+    // If auth is done but we have no agentId, stop loading and show empty state.
     if (!agentId) {
       setIsLoading(false);
+      setPayments([]);
       return;
     }
 
-    // If we have an agentId, start listening for data.
-    setIsLoading(true);
+    // If we have an agentId, set up the Firestore listener.
     const paymentsQuery = query(
       collection(db, "salary", agentId, "payments"),
       orderBy("date", "desc")
@@ -46,17 +46,17 @@ export default function SalaryLogPage() {
           ...doc.data(),
         })) as SalaryPayment[];
         setPayments(paymentData);
-        setIsLoading(false);
+        setIsLoading(false); // Data has been loaded.
       },
       (error) => {
         console.error("Error fetching salary log:", error);
-        setIsLoading(false);
+        setIsLoading(false); // Stop loading on error.
       }
     );
 
-    // Cleanup the listener when the component unmounts or agentId changes.
+    // Cleanup listener when the component unmounts or dependencies change.
     return () => unsubscribe();
-  }, [agentId, authLoading]); // Effect depends on both agentId and authLoading status.
+  }, [agentId, authLoading]); // Re-run this effect if agentId or authLoading status changes.
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
