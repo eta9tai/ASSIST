@@ -19,21 +19,17 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CallHistory() {
-  const { agentId } = useAuth();
+  const { agentId, loading: authLoading } = useAuth();
   const [callEntries, setCallEntries] = useState<CallEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // If agentId is not yet available, don't do anything.
-    // Set loading to false and clear entries if it's explicitly null after loading.
-    if (!agentId) {
-        setIsLoading(false);
-        setCallEntries([]);
-        return;
-    };
+    // Wait until authentication is resolved and we have an agentId
+    if (authLoading || !agentId) {
+      setIsLoading(true); // Keep showing skeleton loader
+      return;
+    }
 
-    setIsLoading(true);
-    // The collection name is now the agent's ID (e.g., "ZN001")
     const q = query(
       collection(db, agentId),
       orderBy("createdAt", "desc")
@@ -53,7 +49,7 @@ export default function CallHistory() {
 
     // Cleanup the listener when the component unmounts or agentId changes.
     return () => unsubscribe();
-  }, [agentId]); // This effect re-runs whenever agentId changes.
+  }, [agentId, authLoading]);
 
   const getBadgeVariant = (outcome: CallEntry["outcome"]) => {
     switch (outcome) {
