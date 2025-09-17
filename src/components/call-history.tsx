@@ -29,19 +29,28 @@ export default function CallHistory() {
         return;
     };
 
+    // This query now explicitly looks for documents that are call entries
+    // by checking for the clientName field, in addition to matching the agentId.
     const q = query(
       collection(db, "agents"),
       where("agentId", "==", user.uid),
+      where("clientName", "!=", null),
       orderBy("createdAt", "desc")
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const entries: CallEntry[] = [];
       querySnapshot.forEach((doc) => {
-        entries.push({ id: doc.id, ...doc.data() } as CallEntry);
+        // We only push documents that look like call entries
+        if (doc.data().clientName) {
+            entries.push({ id: doc.id, ...doc.data() } as CallEntry);
+        }
       });
       setCallEntries(entries);
       setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching call history: ", error);
+        setIsLoading(false);
     });
 
     return () => unsubscribe();
