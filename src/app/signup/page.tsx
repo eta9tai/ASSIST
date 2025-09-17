@@ -7,7 +7,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,13 @@ export default function SignupPage() {
       // Add username to user's profile
       await updateProfile(user, { displayName: values.username });
       
+      // Create a document for the new agent
+      await setDoc(doc(db, "agents", user.uid), {
+        username: values.username,
+        email: values.email,
+        createdAt: serverTimestamp(),
+      });
+
       router.push("/dashboard");
     } catch (error: any) {
       console.error("Signup error:", error);
