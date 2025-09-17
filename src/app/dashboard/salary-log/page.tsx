@@ -59,6 +59,8 @@ export default function SalaryLogPage() {
         return 'default';
       case 'Issued':
         return 'secondary';
+      case 'Cancelled':
+        return 'destructive';
       default:
         return 'outline';
     }
@@ -137,5 +139,3 @@ export default function SalaryLogPage() {
     </div>
   );
 }
-
-    

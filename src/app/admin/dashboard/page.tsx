@@ -21,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, PlusCircle, CheckCircle } from "lucide-react";
+import { Loader2, PlusCircle, CheckCircle, XCircle } from "lucide-react";
 
 const salaryFormSchema = z.object({
   agentId: z.enum(["ZN001", "ZN002"], { required_error: "You must select an agent." }),
@@ -60,14 +60,14 @@ function AgentPaymentHistory({ agentId }: { agentId: "ZN001" | "ZN002" }) {
     return () => unsubscribe();
   }, [agentId]);
 
-  const handleMarkAsCredited = async (paymentId: string) => {
+  const updatePaymentStatus = async (paymentId: string, status: "Credited" | "Cancelled") => {
     setIsUpdating(paymentId);
     try {
       const paymentDocRef = doc(db, "salary", agentId, "payments", paymentId);
-      await updateDoc(paymentDocRef, { status: "Credited" });
+      await updateDoc(paymentDocRef, { status: status });
       toast({
         title: "Success",
-        description: "Payment status updated to Credited.",
+        description: `Payment status updated to ${status}.`,
       });
     } catch (error) {
       console.error("Error updating payment status:", error);
@@ -81,12 +81,15 @@ function AgentPaymentHistory({ agentId }: { agentId: "ZN001" | "ZN002" }) {
     }
   };
 
+
   const getStatusVariant = (status: string | undefined) => {
     switch (status) {
       case 'Credited':
         return 'default';
       case 'Issued':
         return 'secondary';
+      case 'Cancelled':
+        return 'destructive';
       default:
         return 'outline';
     }
@@ -122,21 +125,36 @@ function AgentPaymentHistory({ agentId }: { agentId: "ZN001" | "ZN002" }) {
                     {payment.status || 'Issued'}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right">
-                  {payment.status !== 'Credited' && (
-                     <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleMarkAsCredited(payment.id)}
-                      disabled={isUpdating === payment.id}
-                    >
-                      {isUpdating === payment.id ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                      )}
-                      Mark as Credited
-                    </Button>
+                <TableCell className="text-right space-x-2">
+                  {payment.status === 'Issued' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updatePaymentStatus(payment.id, "Credited")}
+                        disabled={isUpdating === payment.id}
+                      >
+                        {isUpdating === payment.id ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                        )}
+                        Credit
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => updatePaymentStatus(payment.id, "Cancelled")}
+                        disabled={isUpdating === payment.id}
+                      >
+                        {isUpdating === payment.id ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <XCircle className="mr-2 h-4 w-4" />
+                        )}
+                        Cancel
+                      </Button>
+                    </>
                   )}
                 </TableCell>
               </TableRow>
@@ -353,5 +371,3 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
-
-    
