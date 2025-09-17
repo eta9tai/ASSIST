@@ -64,7 +64,7 @@ export default function CallEntryForm() {
 
     setIsLoading(true);
     try {
-      await addDoc(collection(db, "call_entries"), {
+      await addDoc(collection(db, "agents"), {
         ...values,
         agentId: user.uid,
         createdAt: serverTimestamp(),
