@@ -77,6 +77,7 @@ export default function SignupPage() {
         uid: user.uid,
         username: values.username,
         email: values.email,
+        agentId: user.uid, // Add agentId to comply with security rules
       });
 
       router.push("/dashboard");
