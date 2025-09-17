@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, type ReactNode } from "react";
@@ -15,20 +16,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [agentId, setAgentIdState] = useState<string | null>(null);
 
   useEffect(() => {
+    // This function runs when the component first loads.
+    const storedAgentId = localStorage.getItem('agentId');
+    setAgentIdState(storedAgentId);
+
+    // Set up the listener for Firebase auth changes.
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
-      if (user) {
-        // When auth state loads, also load agentId from localStorage
-        const storedAgentId = localStorage.getItem('agentId');
-        setAgentIdState(storedAgentId);
-      } else {
-        // Clear agentId on logout
+      if (!user) {
+        // If user logs out, clear agentId from state and storage
         localStorage.removeItem('agentId');
         setAgentIdState(null);
       }
+      // Regardless of user state, once this check is done, we are no longer loading.
       setLoading(false);
     });
 
+    // Clean up the listener when the component is unmounted.
     return () => unsubscribe();
   }, []);
 
@@ -43,5 +47,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const value = { user, agentId, loading, setAgentId };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  // While the initial loading is true, we don't render the children
+  // to prevent race conditions. Once loading is false, the app can render.
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 }
