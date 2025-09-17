@@ -9,3 +9,8 @@ export type CallEntry = {
   outcome: "Resolved" | "Escalated" | "Follow-up Required";
   createdAt: Timestamp;
 };
+
+export type SalaryData = {
+  agentId: string;
+  totalPaid: number;
+};
