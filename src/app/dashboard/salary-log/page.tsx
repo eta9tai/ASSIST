@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, onSnapshot, orderBy, Timestamp } from "firebase/firestore";
+import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -19,14 +19,19 @@ export default function SalaryLogPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // If auth is still loading, do nothing and show skeleton.
     if (authLoading) {
+      setIsLoading(true);
       return;
     }
+
+    // If auth is done but there is no agentId, stop loading and show empty state.
     if (!agentId) {
       setIsLoading(false);
       return;
     }
 
+    // If we have an agentId, start listening for data.
     setIsLoading(true);
     const paymentsQuery = query(
       collection(db, "salary", agentId, "payments"),
@@ -49,8 +54,9 @@ export default function SalaryLogPage() {
       }
     );
 
+    // Cleanup the listener when the component unmounts or agentId changes.
     return () => unsubscribe();
-  }, [agentId, authLoading]);
+  }, [agentId, authLoading]); // Effect depends on both agentId and authLoading status.
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
