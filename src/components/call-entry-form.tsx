@@ -64,14 +64,18 @@ export default function CallEntryForm() {
 
     setIsLoading(true);
     try {
+      // Generate a random 5-digit call ID
+      const callId = Math.floor(10000 + Math.random() * 90000).toString();
+
       // Use the agentId as the collection name
       await addDoc(collection(db, agentId), {
         ...values,
+        callId,
         createdAt: serverTimestamp(),
       });
       toast({
         title: "Success",
-        description: "Call entry has been saved.",
+        description: `Call entry #${callId} has been saved.`,
       });
       form.reset();
     } catch (error) {

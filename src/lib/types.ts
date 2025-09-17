@@ -2,6 +2,7 @@ import type { Timestamp } from "firebase/firestore";
 
 export type CallEntry = {
   id: string;
+  callId: string;
   clientName: string;
   clientPhone: string;
   notes: string;

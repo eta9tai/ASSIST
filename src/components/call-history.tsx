@@ -73,7 +73,8 @@ export default function CallHistory() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Client Name</TableHead>
+              <TableHead>Call ID</TableHead>
+              <TableHead>Client</TableHead>
               <TableHead>Date</TableHead>
               <TableHead className="text-right">Outcome</TableHead>
             </TableRow>
@@ -82,6 +83,7 @@ export default function CallHistory() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-12" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell className="text-right"><Skeleton className="h-6 w-20 ml-auto" /></TableCell>
@@ -90,6 +92,7 @@ export default function CallHistory() {
             ) : callEntries.length > 0 ? (
               callEntries.map((entry) => (
                 <TableRow key={entry.id}>
+                  <TableCell className="font-mono text-muted-foreground">#{entry.callId}</TableCell>
                   <TableCell className="font-medium">{entry.clientName}</TableCell>
                   <TableCell>{entry.createdAt?.toDate().toLocaleString() || 'N/A'}</TableCell>
                   <TableCell className="text-right">
@@ -101,7 +104,7 @@ export default function CallHistory() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center">
+                <TableCell colSpan={4} className="h-24 text-center">
                   No call entries found for this agent.
                 </TableCell>
               </TableRow>
