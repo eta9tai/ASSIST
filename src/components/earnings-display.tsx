@@ -12,9 +12,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DollarSign, Wallet, History, Hourglass, Trash2, Loader2 } from "lucide-react";
-import type { SalaryPayment } from "@/lib/types";
+import type { SalaryPayment, CallEntry } from "@/lib/types";
 
 const CALL_RATE = 15; // 15 rupees per call
+const EDIT_BONUS = 5; // 5 rupees per edit
 
 export default function EarningsDisplay() {
   const { agentId } = useAuth();
@@ -45,7 +46,18 @@ export default function EarningsDisplay() {
         }
         
         const unsubscribeCalls = onSnapshot(callsQuery, (snapshot) => {
-          const earnings = snapshot.size * CALL_RATE;
+          let callCount = 0;
+          let editBonusTotal = 0;
+          
+          snapshot.forEach(doc => {
+            const call = doc.data() as CallEntry;
+            callCount++;
+            if (call.edited) {
+              editBonusTotal += EDIT_BONUS;
+            }
+          });
+
+          const earnings = (callCount * CALL_RATE) + editBonusTotal;
           setTotalEarnings(earnings);
           setIsLoading(false);
         }, (error) => {
@@ -66,9 +78,8 @@ export default function EarningsDisplay() {
             const payment = doc.data() as SalaryPayment;
             if (payment.status === 'Credited') {
               totalPaid += payment.amount || 0;
-            }
-            if (payment.status === 'Issued') {
-                totalUpcoming += payment.amount || 0;
+            } else if (payment.status === 'Issued') {
+              totalUpcoming += payment.amount || 0;
             }
           });
           setSalaryPaid(totalPaid);

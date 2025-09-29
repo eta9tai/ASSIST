@@ -9,6 +9,7 @@ export type CallEntry = {
   notes: string;
   outcome: "Resolved" | "Escalated" | "Follow-up Required";
   createdAt: Timestamp;
+  edited?: boolean; // To track if the status has been edited for the bonus
 };
 
 export type SalaryPayment = {
